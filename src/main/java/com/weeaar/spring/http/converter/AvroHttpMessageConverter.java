@@ -7,6 +7,7 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.avro.AvroRemoteException;
 import org.apache.avro.Schema;
 import org.apache.avro.specific.SpecificRecord;
 import org.apache.commons.logging.Log;
@@ -22,6 +23,8 @@ import org.springframework.http.converter.HttpMessageNotWritableException;
 public class AvroHttpMessageConverter<T> extends AbstractHttpMessageConverter<Object>
 {
 	protected final Log logger = LogFactory.getLog(getClass());
+	
+	protected String HTTP_HEADER_NAME = "json__TypeId__";
 
 	public static final Charset DEFAULT_CHARSET = Charset.forName("UTF-8");
 
@@ -55,58 +58,41 @@ public class AvroHttpMessageConverter<T> extends AbstractHttpMessageConverter<Ob
 	@Override
 	protected Object readInternal(Class<? extends Object> clazz, HttpInputMessage inputMessage) throws IOException, HttpMessageNotReadableException
 	{
-		String className = null;
-		Class cls;
-		try
+		if (!inputMessage.getHeaders().containsKey(HTTP_HEADER_NAME))
 		{
-			className = inputMessage.getHeaders().get("json__TypeId__").get(0);
-			cls = Class.forName(className);
-		} catch (ClassNotFoundException e)
-		{
-			logger.error("Coulnd found class (" + className + ") from header json__TypeId__", e);
 			return null;
 		}
-		Method method;
-		Schema raw;
-		try
-		{
-			method = cls.getDeclaredMethod("getClassSchema");
-			raw = (Schema) method.invoke(null);
-		} catch (NoSuchMethodException | SecurityException e)
-		{
-			logger.error("Class " + className + " not looks like an AvroObject", e);
-			return null;
-		} catch (IllegalAccessException e)
-		{
-			logger.error("Class " + className + " not looks like an AvroObject", e);
-			return null;
-		} catch (IllegalArgumentException e)
-		{
-			logger.error("Class " + className + " not looks like an AvroObject", e);
-			return null;
-		} catch (InvocationTargetException e)
-		{
-			logger.error("Class " + className + " not looks like an AvroObject", e);
-			return null;
-		}
-		
-//		String json = IOUtils.toString(inputMessage.getBody(), DEFAULT_CHARSET);
-		
 
-		return (T) AvroConverter.convertFromJson(inputMessage.getBody(), raw, cls.getClass());
+		String className = inputMessage.getHeaders().get(HTTP_HEADER_NAME).get(0);
+		Class cls = AvroConverter.getClass(className);
+
+		if (null == cls)
+		{
+			return null;
+		}
+
+		Schema schema = AvroConverter.getSchema(cls);
+
+		if (null == schema)
+		{
+			return null;
+		}
+		
+		return (T) AvroConverter.convertFromJson(inputMessage.getBody(), schema, cls.getClass());
 	}
 
 	@Override
 	protected void writeInternal(Object t, HttpOutputMessage outputMessage) throws IOException, HttpMessageNotWritableException
 	{
-		Schema raw = ((SpecificRecord) t).getSchema();
+		Schema schema = AvroConverter.getSchema(t.getClass());
 
-		byte[] returnObject = AvroConverter.convertToJson(t, raw);
+		byte[] returnObject = AvroConverter.convertToJson(t, schema);
 
 		HttpHeaders headers = outputMessage.getHeaders();
 
-		headers.set("json__TypeId__", t.getClass().getCanonicalName().toString());
+		headers.set(HTTP_HEADER_NAME, t.getClass().getCanonicalName().toString());
 
 		outputMessage.getBody().write(returnObject);
 	}
+
 }
