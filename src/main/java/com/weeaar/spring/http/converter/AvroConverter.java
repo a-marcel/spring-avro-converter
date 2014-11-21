@@ -23,7 +23,6 @@ public class AvroConverter
 {
 	protected final static Log logger = LogFactory.getLog(AvroConverter.class);
 
-	
 	private static Map<String, Class> classCache = new ConcurrentHashMap<String, Class>();
 	private static Map<String, Schema> schemaCache = new ConcurrentHashMap<String, Schema>();
 
@@ -48,35 +47,61 @@ public class AvroConverter
 	public static Schema getSchema(String className)
 	{
 		Class c = AvroConverter.getClass(className);
-		
+
 		if (null == c)
 		{
 			return null;
 		}
 		return AvroConverter.getSchema(c);
 	}
-	
+
 	public static Schema getSchema(Class clazz)
 	{
 		try
 		{
 			Schema raw = schemaCache.get(clazz.getName());
-			
+
+			Method method = null;
 			if (null != raw)
 			{
 				return raw;
 			}
 			
-			Method method = clazz.getDeclaredMethod("getClassSchema");
+			method = clazz.getDeclaredMethod("getClassSchema");
+
+/*			try
+			{
+				method = clazz.getDeclaredMethod("getClassSchema");
+			} catch (NoSuchMethodException | SecurityException e)
+			{
+				Class[] classes = clazz.getClasses();
+				
+				for (int i = 0; i < classes.length; i++)
+				{
+					try
+					{
+						clazz = classes[i];
+						method = clazz.getDeclaredMethod("getClassSchema");						
+					} catch (NoSuchMethodException | SecurityException e2)
+					{
+					}
+				}
+				
+				if (null == method)
+				{
+					throw e;
+				}
+				
+			}*/
 			raw = (Schema) method.invoke(null);
-			
+
 			if (null == raw)
 			{
 				return null;
 			}
-			
+
 			schemaCache.put(clazz.getName(), raw);
-			
+
 			return raw;
 		} catch (NoSuchMethodException | SecurityException e)
 		{
@@ -84,20 +109,19 @@ public class AvroConverter
 			return null;
 		} catch (IllegalAccessException e)
 		{
-			logger.error("Class " + clazz.getName()  + " not looks like an AvroObject", e);
+			logger.error("Class " + clazz.getName() + " not looks like an AvroObject", e);
 			return null;
 		} catch (IllegalArgumentException e)
 		{
-			logger.error("Class " + clazz.getName()  + " not looks like an AvroObject", e);
+			logger.error("Class " + clazz.getName() + " not looks like an AvroObject", e);
 			return null;
 		} catch (InvocationTargetException e)
 		{
-			logger.error("Class " + clazz.getName()  + " not looks like an AvroObject", e);
+			logger.error("Class " + clazz.getName() + " not looks like an AvroObject", e);
 			return null;
 		}
-				
-	}
 
+	}
 
 	public static <T> T convertFromJson(Object json, Schema schema, Class<T> className) throws IOException
 	{
