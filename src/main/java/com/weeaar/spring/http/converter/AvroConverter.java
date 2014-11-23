@@ -3,6 +3,7 @@ package com.weeaar.spring.http.converter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -66,56 +67,59 @@ public class AvroConverter
 			{
 				return raw;
 			}
-			
-			method = clazz.getDeclaredMethod("getClassSchema");
 
-/*			try
+			// method = clazz.getDeclaredMethod("getClassSchema");
+
+			Class<?> current = clazz;
+			Field schema = null;
+			do
+			{
+				try
+				{
+					
+					schema = current.getDeclaredField("SCHEMA$");
+					raw = (Schema) schema.get(current);
+				} catch (Exception e)
+				{
+				}
+			} while ((current = current.getSuperclass()) != null);
+
+			
+			/*try
 			{
 				method = clazz.getDeclaredMethod("getClassSchema");
 			} catch (NoSuchMethodException | SecurityException e)
 			{
 				Class[] classes = clazz.getClasses();
-				
+
 				for (int i = 0; i < classes.length; i++)
 				{
 					try
 					{
 						clazz = classes[i];
-						method = clazz.getDeclaredMethod("getClassSchema");						
+						method = clazz.getDeclaredMethod("getClassSchema");
 					} catch (NoSuchMethodException | SecurityException e2)
 					{
 					}
 				}
-				
+
 				if (null == method)
 				{
 					throw e;
 				}
-				
-			}*/
+			}
+
 			raw = (Schema) method.invoke(null);
 
 			if (null == raw)
 			{
 				return null;
-			}
+			}*/
 
 			schemaCache.put(clazz.getName(), raw);
 
 			return raw;
-		} catch (NoSuchMethodException | SecurityException e)
-		{
-			logger.error("Class " + clazz.getName() + " not looks like an AvroObject", e);
-			return null;
-		} catch (IllegalAccessException e)
-		{
-			logger.error("Class " + clazz.getName() + " not looks like an AvroObject", e);
-			return null;
 		} catch (IllegalArgumentException e)
-		{
-			logger.error("Class " + clazz.getName() + " not looks like an AvroObject", e);
-			return null;
-		} catch (InvocationTargetException e)
 		{
 			logger.error("Class " + clazz.getName() + " not looks like an AvroObject", e);
 			return null;
