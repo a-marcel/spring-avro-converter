@@ -67,9 +67,7 @@ public class AvroConverter
 			{
 				return raw;
 			}
-
-			// method = clazz.getDeclaredMethod("getClassSchema");
-
+			
 			Class<?> current = clazz;
 			Field schema = null;
 			do
@@ -83,38 +81,6 @@ public class AvroConverter
 				{
 				}
 			} while ((current = current.getSuperclass()) != null);
-
-			
-			/*try
-			{
-				method = clazz.getDeclaredMethod("getClassSchema");
-			} catch (NoSuchMethodException | SecurityException e)
-			{
-				Class[] classes = clazz.getClasses();
-
-				for (int i = 0; i < classes.length; i++)
-				{
-					try
-					{
-						clazz = classes[i];
-						method = clazz.getDeclaredMethod("getClassSchema");
-					} catch (NoSuchMethodException | SecurityException e2)
-					{
-					}
-				}
-
-				if (null == method)
-				{
-					throw e;
-				}
-			}
-
-			raw = (Schema) method.invoke(null);
-
-			if (null == raw)
-			{
-				return null;
-			}*/
 
 			schemaCache.put(clazz.getName(), raw);
 
