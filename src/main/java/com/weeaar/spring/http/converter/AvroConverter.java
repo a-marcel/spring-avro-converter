@@ -19,6 +19,10 @@ import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.codehaus.jackson.JsonNode;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class AvroConverter
 {
@@ -53,10 +57,23 @@ public class AvroConverter
 		{
 			return null;
 		}
-		return AvroConverter.getSchema(c);
+		try
+		{
+			return AvroConverter.getSchema(c);
+		} catch (JsonProcessingException e)
+		{
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		} catch (IOException e)
+		{
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
 	}
 
-	public static Schema getSchema(Class clazz)
+	public static Schema getSchema(Class clazz) throws JsonProcessingException, IOException
 	{
 		try
 		{
@@ -74,14 +91,16 @@ public class AvroConverter
 			{
 				try
 				{
-					
 					schema = current.getDeclaredField("SCHEMA$");
 					raw = (Schema) schema.get(current);
 				} catch (Exception e)
 				{
 				}
 			} while ((current = current.getSuperclass()) != null);
-
+			
+			ObjectMapper mapper = new ObjectMapper();
+			com.fasterxml.jackson.databind.JsonNode actualObj = mapper.readTree(raw.toString());
+			
 			schemaCache.put(clazz.getName(), raw);
 
 			return raw;
