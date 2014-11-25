@@ -23,6 +23,8 @@ import org.codehaus.jackson.JsonNode;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
 
 public class AvroConverter
 {
@@ -57,23 +59,10 @@ public class AvroConverter
 		{
 			return null;
 		}
-		try
-		{
-			return AvroConverter.getSchema(c);
-		} catch (JsonProcessingException e)
-		{
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return null;
-		} catch (IOException e)
-		{
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return null;
-		}
+		return AvroConverter.getSchema(c);
 	}
 
-	public static Schema getSchema(Class clazz) throws JsonProcessingException, IOException
+	public static Schema getSchema(Class clazz)
 	{
 		try
 		{
@@ -101,10 +90,15 @@ public class AvroConverter
 			ObjectMapper mapper = new ObjectMapper();
 			com.fasterxml.jackson.databind.JsonNode actualObj = mapper.readTree(raw.toString());
 			
+			((ObjectNode) actualObj).put("name", clazz.getSimpleName());
+			((ObjectNode) actualObj).put("namespace", clazz.getPackage().getName());
+			
+			raw = new Schema.Parser().parse(actualObj.toString());
+			
 			schemaCache.put(clazz.getName(), raw);
 
 			return raw;
-		} catch (IllegalArgumentException e)
+		} catch (IllegalArgumentException | IOException e)
 		{
 			logger.error("Class " + clazz.getName() + " not looks like an AvroObject", e);
 			return null;
