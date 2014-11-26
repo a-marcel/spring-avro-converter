@@ -15,28 +15,41 @@ import com.weeaar.spring.http.converter.AvroConverter;
 
 public class AvroSpecificDatumBackedKafkaDecoder<T> extends AvroDatumSupport<T> implements Decoder<T>
 {
-	private final DatumReader<T> reader;
+
+	// private final DatumReader<T> reader;
 	private final Class<T> clazz;
 	private final Schema schema;
-	
+
 	public AvroSpecificDatumBackedKafkaDecoder(final Class<T> specificRecordBase)
 	{
 		this.clazz = specificRecordBase;
 		this.schema = AvroConverter.getSchema(specificRecordBase);
-		this.reader = new SpecificDatumReader<T>(schema);
+		// this.reader = new SpecificDatumReader<T>(schema);
 	}
 
 	@Override
 	public T fromBytes(final byte[] bytes)
 	{
-		BinaryDecoder jsonDecoder = DecoderFactory.get().binaryDecoder(bytes, null);
-		try
-		{
-			return reader.read(null, jsonDecoder);
-		} catch (IOException e)
-		{
-			e.printStackTrace();
-		}
-		return fromBytes(bytes, reader);
+		T x;
+		return AvroConverter.convertFromJson(bytes, schema, this.clazz);
+		
+//		return x;
+		// auch return fromBytes(bytes, reader);
 	}
 }
+
+/*
+ * public class AvroSpecificDatumBackedKafkaDecoder<T> extends
+ * AvroDatumSupport<T> implements Decoder<T> { private final DatumReader<T>
+ * reader; private final Class<T> clazz; private final Schema schema;
+ * 
+ * public AvroSpecificDatumBackedKafkaDecoder(final Class<T> specificRecordBase)
+ * { this.clazz = specificRecordBase; this.schema =
+ * AvroConverter.getSchema(specificRecordBase); this.reader = new
+ * SpecificDatumReader<T>(schema); }
+ * 
+ * @Override public T fromBytes(final byte[] bytes) { BinaryDecoder jsonDecoder
+ * = DecoderFactory.get().binaryDecoder(bytes, null); try { return
+ * reader.read(null, jsonDecoder); } catch (IOException e) {
+ * e.printStackTrace(); } return fromBytes(bytes, reader); } }
+ */

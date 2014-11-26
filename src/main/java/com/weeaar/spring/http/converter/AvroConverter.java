@@ -25,7 +25,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-
 public class AvroConverter
 {
 	protected final static Log logger = LogFactory.getLog(AvroConverter.class);
@@ -73,7 +72,7 @@ public class AvroConverter
 			{
 				return raw;
 			}
-			
+
 			Class<?> current = clazz;
 			Field schema = null;
 			do
@@ -86,15 +85,15 @@ public class AvroConverter
 				{
 				}
 			} while ((current = current.getSuperclass()) != null);
-			
+
 			ObjectMapper mapper = new ObjectMapper();
 			com.fasterxml.jackson.databind.JsonNode actualObj = mapper.readTree(raw.toString());
-			
+
 			((ObjectNode) actualObj).put("name", clazz.getSimpleName());
 			((ObjectNode) actualObj).put("namespace", clazz.getPackage().getName());
-			
+
 			raw = new Schema.Parser().parse(actualObj.toString());
-			
+
 			schemaCache.put(clazz.getName(), raw);
 
 			return raw;
@@ -106,7 +105,7 @@ public class AvroConverter
 
 	}
 
-	public static <T> T convertFromJson(Object json, Schema schema, Class<T> className) throws IOException
+	public static <T> T convertFromJson(Object json, Schema schema, Class<T> className)
 	{
 		T returnObject = null;
 
@@ -117,18 +116,36 @@ public class AvroConverter
 			jsonDecoder = DecoderFactory.get().binaryDecoder((InputStream) json, null);
 		} else
 		{
-			byte[] jsonBytes = json.toString().getBytes();
+			byte[] jsonBytes;
+			if (json instanceof byte[])
+			{
+				jsonBytes = (byte[]) json;
+			} else
+			{
+				jsonBytes = json.toString().getBytes();
+			}
 
 			jsonDecoder = DecoderFactory.get().binaryDecoder(jsonBytes, null);
 		}
 
 		SpecificDatumReader<T> reader = new SpecificDatumReader<T>(schema);
-		returnObject = reader.read(null, jsonDecoder);
+		try
+		{
+			returnObject = reader.read(null, jsonDecoder);
+		} catch (IOException e)
+		{
+			logger.error("Cannot convert:", e);
+			return null;
+		} catch (Throwable e)
+		{
+			logger.error("Cannot convert:", e);
+			return null;
+		}
 
 		return returnObject;
 	}
 
-	public static <T> byte[] convertToJson(Object value, Schema raw) throws IOException
+	public static <T> byte[] convertToJson(Object value, Schema raw)
 	{
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 
@@ -136,8 +153,15 @@ public class AvroConverter
 
 		Encoder encoder = EncoderFactory.get().binaryEncoder(bos, null);
 
-		writer.write((T) value, encoder);
-		encoder.flush();
+		try
+		{
+			writer.write((T) value, encoder);
+			encoder.flush();
+		} catch (IOException e)
+		{
+			logger.error("Cannot convert:", e);
+			return null;
+		}
 
 		return bos.toByteArray();
 	}
