@@ -2,6 +2,8 @@ package com.weeaar.spring.integration.serializer;
 
 import java.io.IOException;
 
+import javax.annotation.PreDestroy;
+
 import kafka.serializer.Decoder;
 
 import org.apache.avro.Schema;
@@ -32,9 +34,15 @@ public class AvroSpecificDatumBackedKafkaDecoder<T> extends AvroDatumSupport<T> 
 	{
 		T x;
 		return AvroConverter.convertFromJson(bytes, schema, this.clazz);
-		
-//		return x;
+
+		// return x;
 		// auch return fromBytes(bytes, reader);
+	}
+
+	@PreDestroy
+	public void cleanUp() throws Exception
+	{
+		AvroConverter.cleanUp();
 	}
 }
 

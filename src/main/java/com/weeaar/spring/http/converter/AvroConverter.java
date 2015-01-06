@@ -165,4 +165,10 @@ public class AvroConverter
 
 		return bos.toByteArray();
 	}
+	
+	public static void cleanUp()
+	{
+		classCache = new ConcurrentHashMap<String, Class>();
+		schemaCache = new ConcurrentHashMap<String, Schema>();
+	}
 }
