@@ -32,11 +32,9 @@ public class AvroSpecificDatumBackedKafkaDecoder<T> extends AvroDatumSupport<T> 
 	@Override
 	public T fromBytes(final byte[] bytes)
 	{
-		T x;
-		return AvroConverter.convertFromJson(bytes, schema, this.clazz);
+		T x = (T)AvroConverter.convertFromJson(bytes, schema, this.clazz);
+		return x;
 
-		// return x;
-		// auch return fromBytes(bytes, reader);
 	}
 
 	@PreDestroy
