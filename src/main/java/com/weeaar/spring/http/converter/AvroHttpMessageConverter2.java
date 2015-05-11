@@ -20,7 +20,7 @@ import org.springframework.http.converter.AbstractHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.converter.HttpMessageNotWritableException;
 
-public class AvroHttpMessageConverter<T> extends AbstractHttpMessageConverter<Object>
+public class AvroHttpMessageConverter2<T> extends AbstractHttpMessageConverter<Object>
 {
 	protected final Log logger = LogFactory.getLog(getClass());
 	
@@ -33,7 +33,7 @@ public class AvroHttpMessageConverter<T> extends AbstractHttpMessageConverter<Ob
 	 * AvroHttpMessageConverter(); }
 	 */
 
-	public AvroHttpMessageConverter()
+	public AvroHttpMessageConverter2()
 	{
 		super();
 		List<MediaType> supportedMediaTypes = new ArrayList<MediaType>();
@@ -78,7 +78,9 @@ public class AvroHttpMessageConverter<T> extends AbstractHttpMessageConverter<Ob
 			return null;
 		}
 		
-		return (T) AvroConverter.convertFromJson(inputMessage.getBody(), schema, cls.getClass());
+		T record = (T) AvroConverter.convertFromJson(inputMessage.getBody(), schema, cls.getClass()); 
+		
+		return record;
 	}
 
 	@Override

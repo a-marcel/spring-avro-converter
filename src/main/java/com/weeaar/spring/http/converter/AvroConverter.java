@@ -19,6 +19,11 @@ import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.codehaus.jackson.JsonNode;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 public class AvroConverter
 {
@@ -68,15 +73,12 @@ public class AvroConverter
 				return raw;
 			}
 
-			// method = clazz.getDeclaredMethod("getClassSchema");
-
 			Class<?> current = clazz;
 			Field schema = null;
 			do
 			{
 				try
 				{
-					
 					schema = current.getDeclaredField("SCHEMA$");
 					raw = (Schema) schema.get(current);
 				} catch (Exception e)
@@ -84,42 +86,18 @@ public class AvroConverter
 				}
 			} while ((current = current.getSuperclass()) != null);
 
-			
-			/*try
-			{
-				method = clazz.getDeclaredMethod("getClassSchema");
-			} catch (NoSuchMethodException | SecurityException e)
-			{
-				Class[] classes = clazz.getClasses();
+			ObjectMapper mapper = new ObjectMapper();
+			com.fasterxml.jackson.databind.JsonNode actualObj = mapper.readTree(raw.toString());
 
-				for (int i = 0; i < classes.length; i++)
-				{
-					try
-					{
-						clazz = classes[i];
-						method = clazz.getDeclaredMethod("getClassSchema");
-					} catch (NoSuchMethodException | SecurityException e2)
-					{
-					}
-				}
+			((ObjectNode) actualObj).put("name", clazz.getSimpleName());
+			((ObjectNode) actualObj).put("namespace", clazz.getPackage().getName());
 
-				if (null == method)
-				{
-					throw e;
-				}
-			}
-
-			raw = (Schema) method.invoke(null);
-
-			if (null == raw)
-			{
-				return null;
-			}*/
+			raw = new Schema.Parser().parse(actualObj.toString());
 
 			schemaCache.put(clazz.getName(), raw);
 
 			return raw;
-		} catch (IllegalArgumentException e)
+		} catch (IllegalArgumentException | IOException e)
 		{
 			logger.error("Class " + clazz.getName() + " not looks like an AvroObject", e);
 			return null;
@@ -127,7 +105,7 @@ public class AvroConverter
 
 	}
 
-	public static <T> T convertFromJson(Object json, Schema schema, Class<T> className) throws IOException
+	public static <T> T convertFromJson(Object json, Schema schema, Class<T> className)
 	{
 		T returnObject = null;
 
@@ -138,18 +116,36 @@ public class AvroConverter
 			jsonDecoder = DecoderFactory.get().binaryDecoder((InputStream) json, null);
 		} else
 		{
-			byte[] jsonBytes = json.toString().getBytes();
+			byte[] jsonBytes;
+			if (json instanceof byte[])
+			{
+				jsonBytes = (byte[]) json;
+			} else
+			{
+				jsonBytes = json.toString().getBytes();
+			}
 
 			jsonDecoder = DecoderFactory.get().binaryDecoder(jsonBytes, null);
 		}
 
 		SpecificDatumReader<T> reader = new SpecificDatumReader<T>(schema);
-		returnObject = reader.read(null, jsonDecoder);
+		try
+		{
+			returnObject = reader.read(null, jsonDecoder);
+		} catch (IOException e)
+		{
+			logger.error("Cannot convert:", e);
+			return null;
+		} catch (Throwable e)
+		{
+			logger.error("Cannot convert:", e);
+			return null;
+		}
 
 		return returnObject;
 	}
 
-	public static <T> byte[] convertToJson(Object value, Schema raw) throws IOException
+	public static <T> byte[] convertToJson(Object value, Schema raw)
 	{
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 
@@ -157,9 +153,22 @@ public class AvroConverter
 
 		Encoder encoder = EncoderFactory.get().binaryEncoder(bos, null);
 
-		writer.write((T) value, encoder);
-		encoder.flush();
+		try
+		{
+			writer.write((T) value, encoder);
+			encoder.flush();
+		} catch (IOException e)
+		{
+			logger.error("Cannot convert:", e);
+			return null;
+		}
 
 		return bos.toByteArray();
+	}
+	
+	public static void cleanUp()
+	{
+		classCache = new ConcurrentHashMap<String, Class>();
+		schemaCache = new ConcurrentHashMap<String, Schema>();
 	}
 }
